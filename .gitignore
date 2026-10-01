@@ -1,0 +1,14 @@
+.idea
+.vscode
+bin
+build
+.coverage
+vendor
+.DS_Store
+dist/
+/improvements/
+/tools/bin/
+/tools/vendor/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
