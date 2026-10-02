@@ -44,12 +44,12 @@ make test-race
 
 This repository is part of E2Engine.
 
-- e2engine-core — core domain model, execution logic, and public APIs
-- e2engine-repository — persistence implementations
-- e2engine-runner-local — local test execution
-- e2engine-cli — command-line interface
-- e2engine-tests — end-to-end tests for E2Engine
-- demo — executable demonstration system and E2Engine examples
+- [core](https://github.com/e2engine/core) — core domain model, execution logic, and public APIs
+- [repository](https://github.com/e2engine/repository) — persistence implementations
+- [runner-local](https://github.com/e2engine/runner-local) — local test execution
+- [cli](https://github.com/e2engine/cli) — command-line interface
+- [tests](https://github.com/e2engine/tests) — end-to-end tests for E2Engine
+- demo — executable demonstration system and E2Engine usage examples
 
 ## License
 
