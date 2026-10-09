@@ -3,7 +3,7 @@ module github.com/e2engine/repository
 go 1.27
 
 require (
-	github.com/e2engine/core v0.1.0
+	github.com/e2engine/core v0.1.2
 	github.com/golang-migrate/migrate/v4 v4.20.1
 	github.com/ygrebnov/errorc v0.6.1
 	github.com/ygrebnov/keys v0.2.0
