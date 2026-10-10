@@ -4,8 +4,8 @@ github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dustin/go-humanize v1.1.0 h1:dbKTrvD0klcbBV/h4AWJdMuZogJACoMlvWIWZ5b2xWg=
 github.com/dustin/go-humanize v1.1.0/go.mod h1:hc1CvRkJMsgxqjmjMQF3QNRAZBwY8AXBAzKYoSX9sFI=
-github.com/e2engine/core v0.1.2 h1:QPFPtdWizSPfC9zw1l2moO+yVSvli174LILfTnFAq3E=
-github.com/e2engine/core v0.1.2/go.mod h1:JM4y6XlRsLgYSFXph1T8qPU+Cp5s+WkQYlaJUBvnTzA=
+github.com/e2engine/core v0.2.0 h1:yjSKpI/qSscwGAK3/7Eje26BLhQKo7a5T1Ubm4q/hOo=
+github.com/e2engine/core v0.2.0/go.mod h1:JM4y6XlRsLgYSFXph1T8qPU+Cp5s+WkQYlaJUBvnTzA=
 github.com/golang-migrate/migrate/v4 v4.20.1 h1:2N/ToVTKrKl58ynBpgeVJ4In7VcLCjWTZtm4eP1LxhU=
 github.com/golang-migrate/migrate/v4 v4.20.1/go.mod h1:DDPgKVb4ovSWc4FwSPfV2Uz1160f4XBiTHTrAJtljmM=
 github.com/google/pprof v0.0.0-20260802141513-ef3492d7dac3 h1:LMLX+LgTNWpfvCBdFebv6EsYotImrt/Ppc5cXIriCSo=
