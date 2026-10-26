@@ -63,7 +63,7 @@ func getTestExecution(
 	i int,
 	testSuiteExecutionID string,
 	startedAt, finishedAt time.Time,
-	status string,
+	status corerepository.ExecutionStatus,
 ) corerepository.TestExecution {
 	t.Helper()
 
@@ -87,16 +87,29 @@ func getDefaultTestExecution(t *testing.T, i int) corerepository.TestExecution {
 	testSuiteExecutionID := idPrefixTestSuiteExecution + idBody + "1"
 	startedAt := time.Now().Add(-time.Duration(i) * time.Minute)
 	finishedAt := startedAt.Add(time.Duration(i+1) * time.Minute)
-	status := "passed"
+	status := corerepository.ExecutionStatusPassed
 
 	return getTestExecution(t, i, testSuiteExecutionID, startedAt, finishedAt, status)
+}
+
+func getUnfinishedTestExecution(
+	t *testing.T,
+	i int,
+) corerepository.TestExecution {
+	t.Helper()
+
+	execution := getDefaultTestExecution(t, i)
+	execution.Status = corerepository.ExecutionStatusScheduled
+	execution.FinishedAt = time.Time{}
+
+	return execution
 }
 
 func getTestSuiteExecution(
 	t *testing.T,
 	i int,
 	startedAt, finishedAt time.Time,
-	status string,
+	status corerepository.ExecutionStatus,
 	summary json.RawMessage,
 ) corerepository.TestSuiteExecution {
 	t.Helper()
@@ -119,10 +132,23 @@ func getDefaultTestSuiteExecution(t *testing.T, i int) corerepository.TestSuiteE
 
 	startedAt := time.Now().Add(-time.Duration(i) * time.Minute)
 	finishedAt := startedAt.Add(time.Duration(i+1) * time.Minute)
-	status := "passed"
+	status := corerepository.ExecutionStatusPassed
 	// summary := json.RawMessage(`{"key": "TestSuiteExecution` + strconv.Itoa(i) + `"}`)
 
 	return getTestSuiteExecution(t, i, startedAt, finishedAt, status, nil)
+}
+
+func getUnfinishedTestSuiteExecution(
+	t *testing.T,
+	i int,
+) corerepository.TestSuiteExecution {
+	t.Helper()
+
+	execution := getDefaultTestSuiteExecution(t, i)
+	execution.Status = corerepository.ExecutionStatusScheduled
+	execution.FinishedAt = time.Time{}
+
+	return execution
 }
 
 func getResourcesForList(t *testing.T, kind string) []corerepository.Resource {

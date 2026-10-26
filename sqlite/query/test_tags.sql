@@ -19,4 +19,5 @@ FROM resources r
               ON tt.test_id = r.id
 WHERE tt.tag = sqlc.arg(tag)
   AND r.kind = 'test'
-ORDER BY r.id ASC;
+ORDER BY r.id ASC
+    LIMIT sqlc.arg(limit);

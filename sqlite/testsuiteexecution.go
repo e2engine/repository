@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/e2engine/core/repository"
@@ -13,16 +14,16 @@ import (
 //go:generate go run ./internal/generate/testsuiteexecution
 
 type testSuiteExecutionRepository struct {
-	queries db.Querier
+	store db.Store
 }
 
 var _ repository.TestSuiteExecutionRepository = (*testSuiteExecutionRepository)(nil)
 
 func newTestSuiteExecutionRepository(
-	queries db.Querier,
+	store db.Store,
 ) *testSuiteExecutionRepository {
 	return &testSuiteExecutionRepository{
-		queries: queries,
+		store: store,
 	}
 }
 
@@ -30,13 +31,13 @@ func (r *testSuiteExecutionRepository) Create(
 	ctx context.Context,
 	params *repository.TestSuiteExecution,
 ) (*repository.TestSuiteExecution, error) {
-	raw, err := r.queries.CreateTestSuiteExecution(
+	raw, err := r.store.CreateTestSuiteExecution(
 		ctx,
 		db.CreateTestSuiteExecutionParams{
 			ID:              params.ID,
 			StartedAt:       params.StartedAt,
 			FinishedAt:      params.FinishedAt,
-			Status:          params.Status,
+			Status:          string(params.Status),
 			EnvironmentID:   params.EnvironmentID,
 			EnvironmentName: params.EnvironmentName,
 			TestSuiteID:     params.TestSuiteID,
@@ -51,7 +52,7 @@ func (r *testSuiteExecutionRepository) Create(
 		ID:              raw.ID,
 		StartedAt:       raw.StartedAt,
 		FinishedAt:      raw.FinishedAt,
-		Status:          raw.Status,
+		Status:          repository.ExecutionStatus(raw.Status),
 		EnvironmentID:   raw.EnvironmentID,
 		EnvironmentName: raw.EnvironmentName,
 		TestSuiteID:     raw.TestSuiteID,
@@ -64,7 +65,7 @@ func (r *testSuiteExecutionRepository) Get(
 	ctx context.Context,
 	id string,
 ) (*repository.TestSuiteExecution, error) {
-	raw, err := r.queries.GetTestSuiteExecution(ctx, id)
+	raw, err := r.store.GetTestSuiteExecution(ctx, id)
 	if err != nil {
 		return nil, mapError(err)
 	}
@@ -73,7 +74,7 @@ func (r *testSuiteExecutionRepository) Get(
 		ID:              raw.ID,
 		StartedAt:       raw.StartedAt,
 		FinishedAt:      raw.FinishedAt,
-		Status:          raw.Status,
+		Status:          repository.ExecutionStatus(raw.Status),
 		EnvironmentID:   raw.EnvironmentID,
 		EnvironmentName: raw.EnvironmentName,
 		TestSuiteID:     raw.TestSuiteID,
@@ -86,20 +87,20 @@ func (r *testSuiteExecutionRepository) Get(
 func (r *testSuiteExecutionRepository) GetStatus(
 	ctx context.Context,
 	id string,
-) (string, error) {
-	res, err := r.queries.GetTestSuiteExecutionStatus(ctx, id)
+) (repository.ExecutionStatus, error) {
+	res, err := r.store.GetTestSuiteExecutionStatus(ctx, id)
 	if err != nil {
 		return "", mapError(err)
 	}
 
-	return res, nil
+	return repository.ExecutionStatus(res), nil
 }
 
 func (r *testSuiteExecutionRepository) Delete(
 	ctx context.Context,
 	id string,
 ) (*repository.TestSuiteExecution, error) {
-	raw, err := r.queries.DeleteTestSuiteExecution(ctx, id)
+	raw, err := r.store.DeleteTestSuiteExecution(ctx, id)
 	if err != nil {
 		return nil, mapError(err)
 	}
@@ -108,7 +109,7 @@ func (r *testSuiteExecutionRepository) Delete(
 		ID:              raw.ID,
 		StartedAt:       raw.StartedAt,
 		FinishedAt:      raw.FinishedAt,
-		Status:          raw.Status,
+		Status:          repository.ExecutionStatus(raw.Status),
 		EnvironmentID:   raw.EnvironmentID,
 		EnvironmentName: raw.EnvironmentName,
 		TestSuiteID:     raw.TestSuiteID,
@@ -121,7 +122,7 @@ func (r *testSuiteExecutionRepository) GetIDsByID(
 	ctx context.Context,
 	id string,
 ) ([]string, error) {
-	ids, err := r.queries.GetTestSuiteExecutionIDsByID(
+	ids, err := r.store.GetTestSuiteExecutionIDsByID(
 		ctx,
 		sql.NullString{
 			String: id,
@@ -181,7 +182,7 @@ func (r *testSuiteExecutionRepository) listFirstPage(
 	switch {
 	case orderBy == repository.OrderByID &&
 		direction == repository.OrderDirectionAsc:
-		list, err := r.queries.ListTestSuiteExecutionsByIDFirstAsc(
+		list, err := r.store.ListTestSuiteExecutionsByIDFirstAsc(
 			ctx,
 			pageLimit,
 		)
@@ -192,7 +193,7 @@ func (r *testSuiteExecutionRepository) listFirstPage(
 
 	case orderBy == repository.OrderByID &&
 		direction == repository.OrderDirectionDesc:
-		list, err := r.queries.ListTestSuiteExecutionsByIDFirstDesc(
+		list, err := r.store.ListTestSuiteExecutionsByIDFirstDesc(
 			ctx,
 			pageLimit,
 		)
@@ -203,7 +204,7 @@ func (r *testSuiteExecutionRepository) listFirstPage(
 
 	case orderBy == repository.OrderByStartedAt &&
 		direction == repository.OrderDirectionAsc:
-		list, err := r.queries.ListTestSuiteExecutionsByStartedAtFirstAsc(
+		list, err := r.store.ListTestSuiteExecutionsByStartedAtFirstAsc(
 			ctx,
 			pageLimit,
 		)
@@ -214,7 +215,7 @@ func (r *testSuiteExecutionRepository) listFirstPage(
 
 	case orderBy == repository.OrderByStartedAt &&
 		direction == repository.OrderDirectionDesc:
-		list, err := r.queries.ListTestSuiteExecutionsByStartedAtFirstDesc(
+		list, err := r.store.ListTestSuiteExecutionsByStartedAtFirstDesc(
 			ctx,
 			pageLimit,
 		)
@@ -225,7 +226,7 @@ func (r *testSuiteExecutionRepository) listFirstPage(
 
 	case orderBy == repository.OrderByFinishedAt &&
 		direction == repository.OrderDirectionAsc:
-		list, err := r.queries.ListTestSuiteExecutionsByFinishedAtFirstAsc(
+		list, err := r.store.ListTestSuiteExecutionsByFinishedAtFirstAsc(
 			ctx,
 			pageLimit,
 		)
@@ -236,7 +237,7 @@ func (r *testSuiteExecutionRepository) listFirstPage(
 
 	case orderBy == repository.OrderByFinishedAt &&
 		direction == repository.OrderDirectionDesc:
-		list, err := r.queries.ListTestSuiteExecutionsByFinishedAtFirstDesc(
+		list, err := r.store.ListTestSuiteExecutionsByFinishedAtFirstDesc(
 			ctx,
 			pageLimit,
 		)
@@ -247,7 +248,7 @@ func (r *testSuiteExecutionRepository) listFirstPage(
 
 	case orderBy == repository.OrderByStatus &&
 		direction == repository.OrderDirectionAsc:
-		list, err := r.queries.ListTestSuiteExecutionsByStatusFirstAsc(
+		list, err := r.store.ListTestSuiteExecutionsByStatusFirstAsc(
 			ctx,
 			pageLimit,
 		)
@@ -258,7 +259,7 @@ func (r *testSuiteExecutionRepository) listFirstPage(
 
 	case orderBy == repository.OrderByStatus &&
 		direction == repository.OrderDirectionDesc:
-		list, err := r.queries.ListTestSuiteExecutionsByStatusFirstDesc(
+		list, err := r.store.ListTestSuiteExecutionsByStatusFirstDesc(
 			ctx,
 			pageLimit,
 		)
@@ -303,7 +304,7 @@ func (r *testSuiteExecutionRepository) listByID(
 	switch {
 	case params.Position == repository.PositionAfter &&
 		params.OrderDirection == repository.OrderDirectionAsc:
-		list, err := r.queries.ListTestSuiteExecutionsByIDAfterAsc(
+		list, err := r.store.ListTestSuiteExecutionsByIDAfterAsc(
 			ctx,
 			db.ListTestSuiteExecutionsByIDAfterAscParams{
 				AnchorID:  params.ID,
@@ -317,7 +318,7 @@ func (r *testSuiteExecutionRepository) listByID(
 
 	case params.Position == repository.PositionAfter &&
 		params.OrderDirection == repository.OrderDirectionDesc:
-		list, err := r.queries.ListTestSuiteExecutionsByIDAfterDesc(
+		list, err := r.store.ListTestSuiteExecutionsByIDAfterDesc(
 			ctx,
 			db.ListTestSuiteExecutionsByIDAfterDescParams{
 				AnchorID:  params.ID,
@@ -331,7 +332,7 @@ func (r *testSuiteExecutionRepository) listByID(
 
 	case params.Position == repository.PositionBefore &&
 		params.OrderDirection == repository.OrderDirectionAsc:
-		list, err := r.queries.ListTestSuiteExecutionsByIDBeforeAsc(
+		list, err := r.store.ListTestSuiteExecutionsByIDBeforeAsc(
 			ctx,
 			db.ListTestSuiteExecutionsByIDBeforeAscParams{
 				AnchorID:  params.ID,
@@ -345,7 +346,7 @@ func (r *testSuiteExecutionRepository) listByID(
 
 	case params.Position == repository.PositionBefore &&
 		params.OrderDirection == repository.OrderDirectionDesc:
-		list, err := r.queries.ListTestSuiteExecutionsByIDBeforeDesc(
+		list, err := r.store.ListTestSuiteExecutionsByIDBeforeDesc(
 			ctx,
 			db.ListTestSuiteExecutionsByIDBeforeDescParams{
 				AnchorID:  params.ID,
@@ -362,7 +363,6 @@ func (r *testSuiteExecutionRepository) listByID(
 	}
 }
 
-//nolint:dupl // Explicit dispatch to distinct sqlc-generated query methods is clearer than abstracting it.
 func (r *testSuiteExecutionRepository) listByStartedAt(
 	ctx context.Context,
 	params *repository.ListParams,
@@ -371,7 +371,7 @@ func (r *testSuiteExecutionRepository) listByStartedAt(
 	switch {
 	case params.Position == repository.PositionAfter &&
 		params.OrderDirection == repository.OrderDirectionAsc:
-		list, err := r.queries.ListTestSuiteExecutionsByStartedAtAfterAsc(
+		list, err := r.store.ListTestSuiteExecutionsByStartedAtAfterAsc(
 			ctx,
 			db.ListTestSuiteExecutionsByStartedAtAfterAscParams{
 				AnchorTimestamp: params.ValueTimestamp,
@@ -386,7 +386,7 @@ func (r *testSuiteExecutionRepository) listByStartedAt(
 
 	case params.Position == repository.PositionAfter &&
 		params.OrderDirection == repository.OrderDirectionDesc:
-		list, err := r.queries.ListTestSuiteExecutionsByStartedAtAfterDesc(
+		list, err := r.store.ListTestSuiteExecutionsByStartedAtAfterDesc(
 			ctx,
 			db.ListTestSuiteExecutionsByStartedAtAfterDescParams{
 				AnchorTimestamp: params.ValueTimestamp,
@@ -401,7 +401,7 @@ func (r *testSuiteExecutionRepository) listByStartedAt(
 
 	case params.Position == repository.PositionBefore &&
 		params.OrderDirection == repository.OrderDirectionAsc:
-		list, err := r.queries.ListTestSuiteExecutionsByStartedAtBeforeAsc(
+		list, err := r.store.ListTestSuiteExecutionsByStartedAtBeforeAsc(
 			ctx,
 			db.ListTestSuiteExecutionsByStartedAtBeforeAscParams{
 				AnchorTimestamp: params.ValueTimestamp,
@@ -416,7 +416,7 @@ func (r *testSuiteExecutionRepository) listByStartedAt(
 
 	case params.Position == repository.PositionBefore &&
 		params.OrderDirection == repository.OrderDirectionDesc:
-		list, err := r.queries.ListTestSuiteExecutionsByStartedAtBeforeDesc(
+		list, err := r.store.ListTestSuiteExecutionsByStartedAtBeforeDesc(
 			ctx,
 			db.ListTestSuiteExecutionsByStartedAtBeforeDescParams{
 				AnchorTimestamp: params.ValueTimestamp,
@@ -434,7 +434,6 @@ func (r *testSuiteExecutionRepository) listByStartedAt(
 	}
 }
 
-//nolint:dupl // Explicit dispatch to distinct sqlc-generated query methods is clearer than abstracting it.
 func (r *testSuiteExecutionRepository) listByFinishedAt(
 	ctx context.Context,
 	params *repository.ListParams,
@@ -443,7 +442,7 @@ func (r *testSuiteExecutionRepository) listByFinishedAt(
 	switch {
 	case params.Position == repository.PositionAfter &&
 		params.OrderDirection == repository.OrderDirectionAsc:
-		list, err := r.queries.ListTestSuiteExecutionsByFinishedAtAfterAsc(
+		list, err := r.store.ListTestSuiteExecutionsByFinishedAtAfterAsc(
 			ctx,
 			db.ListTestSuiteExecutionsByFinishedAtAfterAscParams{
 				AnchorTimestamp: params.ValueTimestamp,
@@ -458,7 +457,7 @@ func (r *testSuiteExecutionRepository) listByFinishedAt(
 
 	case params.Position == repository.PositionAfter &&
 		params.OrderDirection == repository.OrderDirectionDesc:
-		list, err := r.queries.ListTestSuiteExecutionsByFinishedAtAfterDesc(
+		list, err := r.store.ListTestSuiteExecutionsByFinishedAtAfterDesc(
 			ctx,
 			db.ListTestSuiteExecutionsByFinishedAtAfterDescParams{
 				AnchorTimestamp: params.ValueTimestamp,
@@ -473,7 +472,7 @@ func (r *testSuiteExecutionRepository) listByFinishedAt(
 
 	case params.Position == repository.PositionBefore &&
 		params.OrderDirection == repository.OrderDirectionAsc:
-		list, err := r.queries.ListTestSuiteExecutionsByFinishedAtBeforeAsc(
+		list, err := r.store.ListTestSuiteExecutionsByFinishedAtBeforeAsc(
 			ctx,
 			db.ListTestSuiteExecutionsByFinishedAtBeforeAscParams{
 				AnchorTimestamp: params.ValueTimestamp,
@@ -488,7 +487,7 @@ func (r *testSuiteExecutionRepository) listByFinishedAt(
 
 	case params.Position == repository.PositionBefore &&
 		params.OrderDirection == repository.OrderDirectionDesc:
-		list, err := r.queries.ListTestSuiteExecutionsByFinishedAtBeforeDesc(
+		list, err := r.store.ListTestSuiteExecutionsByFinishedAtBeforeDesc(
 			ctx,
 			db.ListTestSuiteExecutionsByFinishedAtBeforeDescParams{
 				AnchorTimestamp: params.ValueTimestamp,
@@ -506,7 +505,6 @@ func (r *testSuiteExecutionRepository) listByFinishedAt(
 	}
 }
 
-//nolint:dupl // Explicit dispatch to distinct sqlc-generated query methods is clearer than abstracting it.
 func (r *testSuiteExecutionRepository) listByStatus(
 	ctx context.Context,
 	params *repository.ListParams,
@@ -515,7 +513,7 @@ func (r *testSuiteExecutionRepository) listByStatus(
 	switch {
 	case params.Position == repository.PositionAfter &&
 		params.OrderDirection == repository.OrderDirectionAsc:
-		list, err := r.queries.ListTestSuiteExecutionsByStatusAfterAsc(
+		list, err := r.store.ListTestSuiteExecutionsByStatusAfterAsc(
 			ctx,
 			db.ListTestSuiteExecutionsByStatusAfterAscParams{
 				AnchorValue: params.ValueString,
@@ -530,7 +528,7 @@ func (r *testSuiteExecutionRepository) listByStatus(
 
 	case params.Position == repository.PositionAfter &&
 		params.OrderDirection == repository.OrderDirectionDesc:
-		list, err := r.queries.ListTestSuiteExecutionsByStatusAfterDesc(
+		list, err := r.store.ListTestSuiteExecutionsByStatusAfterDesc(
 			ctx,
 			db.ListTestSuiteExecutionsByStatusAfterDescParams{
 				AnchorValue: params.ValueString,
@@ -545,7 +543,7 @@ func (r *testSuiteExecutionRepository) listByStatus(
 
 	case params.Position == repository.PositionBefore &&
 		params.OrderDirection == repository.OrderDirectionAsc:
-		list, err := r.queries.ListTestSuiteExecutionsByStatusBeforeAsc(
+		list, err := r.store.ListTestSuiteExecutionsByStatusBeforeAsc(
 			ctx,
 			db.ListTestSuiteExecutionsByStatusBeforeAscParams{
 				AnchorValue: params.ValueString,
@@ -560,7 +558,7 @@ func (r *testSuiteExecutionRepository) listByStatus(
 
 	case params.Position == repository.PositionBefore &&
 		params.OrderDirection == repository.OrderDirectionDesc:
-		list, err := r.queries.ListTestSuiteExecutionsByStatusBeforeDesc(
+		list, err := r.store.ListTestSuiteExecutionsByStatusBeforeDesc(
 			ctx,
 			db.ListTestSuiteExecutionsByStatusBeforeDescParams{
 				AnchorValue: params.ValueString,
@@ -582,36 +580,69 @@ func (r *testSuiteExecutionRepository) SetRunning(
 	ctx context.Context,
 	params *repository.SetRunningParams,
 ) error {
-	if _, err := r.queries.SetTestSuiteExecutionRunning(
-		ctx,
-		db.SetTestSuiteExecutionRunningParams{
-			ID:        params.ID,
-			StartedAt: params.StartedAt,
-		},
-	); err != nil {
-		return mapError(err)
-	}
+	return r.store.ExecTx(ctx, func(q *db.Queries) error {
+		_, err := q.SetTestSuiteExecutionRunning(
+			ctx,
+			db.SetTestSuiteExecutionRunningParams{
+				ID:        params.ID,
+				StartedAt: params.StartedAt,
+			},
+		)
+		if err == nil {
+			return nil
+		}
 
-	return nil
+		if !errors.Is(err, sql.ErrNoRows) {
+			return mapError(err)
+		}
+
+		_, err = q.GetTestSuiteExecutionStatus(ctx, params.ID)
+		if err != nil {
+			return mapError(err)
+		}
+
+		return repository.ErrInvalidExecutionStateTransition
+	})
 }
 
 func (r *testSuiteExecutionRepository) SetCompleted(
 	ctx context.Context,
 	params *repository.SetCompletedParams,
 ) error {
-	if _, err := r.queries.SetTestSuiteExecutionCompleted(
-		ctx,
-		db.SetTestSuiteExecutionCompletedParams{
-			ID:         params.ID,
-			FinishedAt: params.FinishedAt,
-			Status:     params.Status,
-			Summary:    params.Summary,
-		},
-	); err != nil {
-		return mapError(err)
+	switch params.Status {
+	case repository.ExecutionStatusPassed,
+		repository.ExecutionStatusFailed,
+		repository.ExecutionStatusError:
+		// Valid terminal status.
+	default:
+		return repository.ErrInvalidExecutionStatus
 	}
 
-	return nil
+	return r.store.ExecTx(ctx, func(q *db.Queries) error {
+		_, err := q.SetTestSuiteExecutionCompleted(
+			ctx,
+			db.SetTestSuiteExecutionCompletedParams{
+				ID:         params.ID,
+				FinishedAt: params.FinishedAt,
+				Status:     string(params.Status),
+				Summary:    params.Summary,
+			},
+		)
+		if err == nil {
+			return nil
+		}
+
+		if !errors.Is(err, sql.ErrNoRows) {
+			return mapError(err)
+		}
+
+		_, err = q.GetTestSuiteExecutionStatus(ctx, params.ID)
+		if err != nil {
+			return mapError(err)
+		}
+
+		return repository.ErrInvalidExecutionStateTransition
+	})
 }
 
 type testSuiteExecutionRow struct {
@@ -646,7 +677,7 @@ func testSuiteExecutionFromDB(
 		ID:              value.ID,
 		StartedAt:       value.StartedAt,
 		FinishedAt:      value.FinishedAt,
-		Status:          value.Status,
+		Status:          repository.ExecutionStatus(value.Status),
 		EnvironmentID:   value.EnvironmentID,
 		EnvironmentName: value.EnvironmentName,
 		TestSuiteID:     value.TestSuiteID,

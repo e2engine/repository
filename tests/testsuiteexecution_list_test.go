@@ -177,7 +177,7 @@ func TestTestSuiteExecutionListCursorEqualSortValue(t *testing.T) {
 				executions[0].Status, executions[1].Status, executions[2].Status, executions[3].Status, executions[4].Status = "error", "failed", "failed", "failed", "running"
 			},
 			func(params *corerepository.ListParams, execution corerepository.TestSuiteExecution) {
-				params.ValueString = execution.Status
+				params.ValueString = string(execution.Status)
 			},
 		},
 	}
@@ -508,7 +508,7 @@ func TestTestSuiteExecutionListQueryErrors(t *testing.T) {
 				corerepository.PositionAfter,
 				corerepository.OrderDirectionAsc,
 				func(params *corerepository.ListParams, execution corerepository.TestSuiteExecution) {
-					params.ValueString = execution.Status
+					params.ValueString = string(execution.Status)
 				},
 			},
 			{
@@ -517,7 +517,7 @@ func TestTestSuiteExecutionListQueryErrors(t *testing.T) {
 				corerepository.PositionAfter,
 				corerepository.OrderDirectionDesc,
 				func(params *corerepository.ListParams, execution corerepository.TestSuiteExecution) {
-					params.ValueString = execution.Status
+					params.ValueString = string(execution.Status)
 				},
 			},
 			{
@@ -526,7 +526,7 @@ func TestTestSuiteExecutionListQueryErrors(t *testing.T) {
 				corerepository.PositionBefore,
 				corerepository.OrderDirectionAsc,
 				func(params *corerepository.ListParams, execution corerepository.TestSuiteExecution) {
-					params.ValueString = execution.Status
+					params.ValueString = string(execution.Status)
 				},
 			},
 			{
@@ -535,7 +535,7 @@ func TestTestSuiteExecutionListQueryErrors(t *testing.T) {
 				corerepository.PositionBefore,
 				corerepository.OrderDirectionDesc,
 				func(params *corerepository.ListParams, execution corerepository.TestSuiteExecution) {
-					params.ValueString = execution.Status
+					params.ValueString = string(execution.Status)
 				},
 			},
 		}
@@ -600,7 +600,13 @@ func getTestSuiteExecutionsForList(t *testing.T) []corerepository.TestSuiteExecu
 	finishedAt := []time.Duration{4 * time.Second, time.Second, 3 * time.Second, time.Second, 2 * time.Second}
 	base := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 	executions := make([]corerepository.TestSuiteExecution, len(startedAt))
-	statuses := []string{"passed", "failed", "error", "failed", "running"}
+	statuses := []corerepository.ExecutionStatus{
+		corerepository.ExecutionStatusPassed,
+		corerepository.ExecutionStatusFailed,
+		corerepository.ExecutionStatusError,
+		corerepository.ExecutionStatusFailed,
+		corerepository.ExecutionStatusRunning,
+	}
 	for i := range executions {
 		executions[i] = getTestSuiteExecution(t, i+1, base.Add(startedAt[i]), base.Add(finishedAt[i]), statuses[i], nil)
 	}
@@ -619,7 +625,7 @@ func testSuiteExecutionListOrderByCases() []testSuiteExecutionOrderByCase {
 			params.ValueTimestamp = execution.FinishedAt
 		}},
 		{"status", corerepository.OrderByStatus, []int{2, 1, 3, 0, 4}, func(params *corerepository.ListParams, execution corerepository.TestSuiteExecution) {
-			params.ValueString = execution.Status
+			params.ValueString = string(execution.Status)
 		}},
 	}
 }

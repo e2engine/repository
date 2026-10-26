@@ -169,6 +169,7 @@ SELECT id
 FROM test_executions
 WHERE id LIKE ?1 || '%'
 ORDER BY id ASC
+    LIMIT 2
 `
 
 // ============================================================================
@@ -287,6 +288,46 @@ func (q *Queries) GetTestExecutionsByTestSuiteExecutionID(ctx context.Context, t
 			&i.TestName,
 			&i.Summary,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getTestSuiteExecutionStats = `-- name: GetTestSuiteExecutionStats :many
+SELECT
+    status,
+    COUNT(*) AS count,
+    MAX(finished_at) AS last_test_finished_at
+FROM test_executions
+WHERE test_suite_execution_id =
+    CAST(?1 AS TEXT)
+GROUP BY status
+`
+
+type GetTestSuiteExecutionStatsRow struct {
+	Status             string      `json:"status"`
+	Count              int64       `json:"count"`
+	LastTestFinishedAt interface{} `json:"last_test_finished_at"`
+}
+
+func (q *Queries) GetTestSuiteExecutionStats(ctx context.Context, testSuiteExecutionID string) ([]GetTestSuiteExecutionStatsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getTestSuiteExecutionStats, testSuiteExecutionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetTestSuiteExecutionStatsRow{}
+	for rows.Next() {
+		var i GetTestSuiteExecutionStatsRow
+		if err := rows.Scan(&i.Status, &i.Count, &i.LastTestFinishedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1715,7 +1756,9 @@ SET
     status = ?2,
     summary = ?3
 WHERE id = ?4
-RETURNING id
+  AND status IN ('scheduled', 'running')
+  AND ?2 IN ('passed', 'failed', 'error')
+    RETURNING id
 `
 
 type SetTestExecutionCompletedParams struct {
@@ -1744,7 +1787,8 @@ SET
     started_at = ?1,
     status = 'running'
 WHERE id = ?2
-RETURNING id
+  AND status = 'scheduled'
+    RETURNING id
 `
 
 type SetTestExecutionRunningParams struct {

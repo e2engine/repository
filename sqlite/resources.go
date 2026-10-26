@@ -22,8 +22,8 @@ type resource interface {
 }
 
 type resourceRepository[E resource] struct {
-	queries db.Querier
-	kind    string
+	store db.Store
+	kind  string
 }
 
 var (
@@ -32,30 +32,30 @@ var (
 )
 
 func newEnvironmentRepository(
-	queries db.Querier,
+	store db.Store,
 ) *resourceRepository[repository.Environment] {
 	return newResourceRepository[repository.Environment](
-		queries,
+		store,
 		resourceKindEnvironment,
 	)
 }
 
 func newTestSuiteRepository(
-	queries db.Querier,
+	store db.Store,
 ) *resourceRepository[repository.TestSuite] {
 	return newResourceRepository[repository.TestSuite](
-		queries,
+		store,
 		resourceKindTestSuite,
 	)
 }
 
 func newResourceRepository[E resource](
-	queries db.Querier,
+	store db.Store,
 	kind string,
 ) *resourceRepository[E] {
 	return &resourceRepository[E]{
-		queries: queries,
-		kind:    kind,
+		store: store,
+		kind:  kind,
 	}
 }
 
@@ -65,7 +65,7 @@ func (r *resourceRepository[E]) Create(
 ) (*E, error) {
 	res := repository.Resource(*params)
 
-	created, err := r.queries.CreateResource(
+	created, err := r.store.CreateResource(
 		ctx,
 		db.CreateResourceParams{
 			ID:          res.ID,
@@ -91,7 +91,7 @@ func (r *resourceRepository[E]) Get(
 	ctx context.Context,
 	id string,
 ) (*E, error) {
-	res, err := r.queries.GetResource(
+	res, err := r.store.GetResource(
 		ctx,
 		db.GetResourceParams{
 			Kind: r.kind,
@@ -111,7 +111,7 @@ func (r *resourceRepository[E]) Delete(
 	ctx context.Context,
 	id string,
 ) (*E, error) {
-	res, err := r.queries.DeleteResource(
+	res, err := r.store.DeleteResource(
 		ctx,
 		db.DeleteResourceParams{
 			Kind: r.kind,
@@ -131,7 +131,7 @@ func (r *resourceRepository[E]) GetIDsByID(
 	ctx context.Context,
 	id string,
 ) ([]string, error) {
-	ids, err := r.queries.GetResourceIDsByID(
+	ids, err := r.store.GetResourceIDsByID(
 		ctx,
 		db.GetResourceIDsByIDParams{
 			Kind: r.kind,
@@ -152,7 +152,7 @@ func (r *resourceRepository[E]) GetIDsByName(
 	ctx context.Context,
 	name string,
 ) ([]string, error) {
-	ids, err := r.queries.GetResourceIDsByName(
+	ids, err := r.store.GetResourceIDsByName(
 		ctx,
 		db.GetResourceIDsByNameParams{
 			Kind: r.kind,
@@ -215,7 +215,7 @@ func (r *resourceRepository[E]) listFirstPage(
 	switch {
 	case orderBy == repository.OrderByID &&
 		direction == repository.OrderDirectionAsc:
-		return r.queries.ListResourcesByIDFirstAsc(
+		return r.store.ListResourcesByIDFirstAsc(
 			ctx,
 			db.ListResourcesByIDFirstAscParams{
 				Kind:      r.kind,
@@ -225,7 +225,7 @@ func (r *resourceRepository[E]) listFirstPage(
 
 	case orderBy == repository.OrderByID &&
 		direction == repository.OrderDirectionDesc:
-		return r.queries.ListResourcesByIDFirstDesc(
+		return r.store.ListResourcesByIDFirstDesc(
 			ctx,
 			db.ListResourcesByIDFirstDescParams{
 				Kind:      r.kind,
@@ -235,7 +235,7 @@ func (r *resourceRepository[E]) listFirstPage(
 
 	case orderBy == repository.OrderByName &&
 		direction == repository.OrderDirectionAsc:
-		return r.queries.ListResourcesByNameFirstAsc(
+		return r.store.ListResourcesByNameFirstAsc(
 			ctx,
 			db.ListResourcesByNameFirstAscParams{
 				Kind:      r.kind,
@@ -245,7 +245,7 @@ func (r *resourceRepository[E]) listFirstPage(
 
 	case orderBy == repository.OrderByName &&
 		direction == repository.OrderDirectionDesc:
-		return r.queries.ListResourcesByNameFirstDesc(
+		return r.store.ListResourcesByNameFirstDesc(
 			ctx,
 			db.ListResourcesByNameFirstDescParams{
 				Kind:      r.kind,
@@ -255,7 +255,7 @@ func (r *resourceRepository[E]) listFirstPage(
 
 	case orderBy == repository.OrderByVersion &&
 		direction == repository.OrderDirectionAsc:
-		return r.queries.ListResourcesByVersionFirstAsc(
+		return r.store.ListResourcesByVersionFirstAsc(
 			ctx,
 			db.ListResourcesByVersionFirstAscParams{
 				Kind:      r.kind,
@@ -265,7 +265,7 @@ func (r *resourceRepository[E]) listFirstPage(
 
 	case orderBy == repository.OrderByVersion &&
 		direction == repository.OrderDirectionDesc:
-		return r.queries.ListResourcesByVersionFirstDesc(
+		return r.store.ListResourcesByVersionFirstDesc(
 			ctx,
 			db.ListResourcesByVersionFirstDescParams{
 				Kind:      r.kind,
@@ -275,7 +275,7 @@ func (r *resourceRepository[E]) listFirstPage(
 
 	case orderBy == repository.OrderByCreatedAt &&
 		direction == repository.OrderDirectionAsc:
-		return r.queries.ListResourcesByCreatedAtFirstAsc(
+		return r.store.ListResourcesByCreatedAtFirstAsc(
 			ctx,
 			db.ListResourcesByCreatedAtFirstAscParams{
 				Kind:      r.kind,
@@ -285,7 +285,7 @@ func (r *resourceRepository[E]) listFirstPage(
 
 	case orderBy == repository.OrderByCreatedAt &&
 		direction == repository.OrderDirectionDesc:
-		return r.queries.ListResourcesByCreatedAtFirstDesc(
+		return r.store.ListResourcesByCreatedAtFirstDesc(
 			ctx,
 			db.ListResourcesByCreatedAtFirstDescParams{
 				Kind:      r.kind,
@@ -295,7 +295,7 @@ func (r *resourceRepository[E]) listFirstPage(
 
 	case orderBy == repository.OrderByUpdatedAt &&
 		direction == repository.OrderDirectionAsc:
-		return r.queries.ListResourcesByUpdatedAtFirstAsc(
+		return r.store.ListResourcesByUpdatedAtFirstAsc(
 			ctx,
 			db.ListResourcesByUpdatedAtFirstAscParams{
 				Kind:      r.kind,
@@ -305,7 +305,7 @@ func (r *resourceRepository[E]) listFirstPage(
 
 	case orderBy == repository.OrderByUpdatedAt &&
 		direction == repository.OrderDirectionDesc:
-		return r.queries.ListResourcesByUpdatedAtFirstDesc(
+		return r.store.ListResourcesByUpdatedAtFirstDesc(
 			ctx,
 			db.ListResourcesByUpdatedAtFirstDescParams{
 				Kind:      r.kind,
@@ -353,7 +353,7 @@ func (r *resourceRepository[E]) listByID(
 	switch {
 	case params.Position == repository.PositionAfter &&
 		params.OrderDirection == repository.OrderDirectionAsc:
-		return r.queries.ListResourcesByIDAfterAsc(
+		return r.store.ListResourcesByIDAfterAsc(
 			ctx,
 			db.ListResourcesByIDAfterAscParams{
 				Kind:      r.kind,
@@ -364,7 +364,7 @@ func (r *resourceRepository[E]) listByID(
 
 	case params.Position == repository.PositionAfter &&
 		params.OrderDirection == repository.OrderDirectionDesc:
-		return r.queries.ListResourcesByIDAfterDesc(
+		return r.store.ListResourcesByIDAfterDesc(
 			ctx,
 			db.ListResourcesByIDAfterDescParams{
 				Kind:      r.kind,
@@ -375,7 +375,7 @@ func (r *resourceRepository[E]) listByID(
 
 	case params.Position == repository.PositionBefore &&
 		params.OrderDirection == repository.OrderDirectionAsc:
-		return r.queries.ListResourcesByIDBeforeAsc(
+		return r.store.ListResourcesByIDBeforeAsc(
 			ctx,
 			db.ListResourcesByIDBeforeAscParams{
 				Kind:      r.kind,
@@ -386,7 +386,7 @@ func (r *resourceRepository[E]) listByID(
 
 	case params.Position == repository.PositionBefore &&
 		params.OrderDirection == repository.OrderDirectionDesc:
-		return r.queries.ListResourcesByIDBeforeDesc(
+		return r.store.ListResourcesByIDBeforeDesc(
 			ctx,
 			db.ListResourcesByIDBeforeDescParams{
 				Kind:      r.kind,
@@ -409,7 +409,7 @@ func (r *resourceRepository[E]) listByName(
 	switch {
 	case params.Position == repository.PositionAfter &&
 		params.OrderDirection == repository.OrderDirectionAsc:
-		return r.queries.ListResourcesByNameAfterAsc(
+		return r.store.ListResourcesByNameAfterAsc(
 			ctx,
 			db.ListResourcesByNameAfterAscParams{
 				Kind:        r.kind,
@@ -421,7 +421,7 @@ func (r *resourceRepository[E]) listByName(
 
 	case params.Position == repository.PositionAfter &&
 		params.OrderDirection == repository.OrderDirectionDesc:
-		return r.queries.ListResourcesByNameAfterDesc(
+		return r.store.ListResourcesByNameAfterDesc(
 			ctx,
 			db.ListResourcesByNameAfterDescParams{
 				Kind:        r.kind,
@@ -433,7 +433,7 @@ func (r *resourceRepository[E]) listByName(
 
 	case params.Position == repository.PositionBefore &&
 		params.OrderDirection == repository.OrderDirectionAsc:
-		return r.queries.ListResourcesByNameBeforeAsc(
+		return r.store.ListResourcesByNameBeforeAsc(
 			ctx,
 			db.ListResourcesByNameBeforeAscParams{
 				Kind:        r.kind,
@@ -445,7 +445,7 @@ func (r *resourceRepository[E]) listByName(
 
 	case params.Position == repository.PositionBefore &&
 		params.OrderDirection == repository.OrderDirectionDesc:
-		return r.queries.ListResourcesByNameBeforeDesc(
+		return r.store.ListResourcesByNameBeforeDesc(
 			ctx,
 			db.ListResourcesByNameBeforeDescParams{
 				Kind:        r.kind,
@@ -469,7 +469,7 @@ func (r *resourceRepository[E]) listByVersion(
 	switch {
 	case params.Position == repository.PositionAfter &&
 		params.OrderDirection == repository.OrderDirectionAsc:
-		return r.queries.ListResourcesByVersionAfterAsc(
+		return r.store.ListResourcesByVersionAfterAsc(
 			ctx,
 			db.ListResourcesByVersionAfterAscParams{
 				Kind:        r.kind,
@@ -481,7 +481,7 @@ func (r *resourceRepository[E]) listByVersion(
 
 	case params.Position == repository.PositionAfter &&
 		params.OrderDirection == repository.OrderDirectionDesc:
-		return r.queries.ListResourcesByVersionAfterDesc(
+		return r.store.ListResourcesByVersionAfterDesc(
 			ctx,
 			db.ListResourcesByVersionAfterDescParams{
 				Kind:        r.kind,
@@ -493,7 +493,7 @@ func (r *resourceRepository[E]) listByVersion(
 
 	case params.Position == repository.PositionBefore &&
 		params.OrderDirection == repository.OrderDirectionAsc:
-		return r.queries.ListResourcesByVersionBeforeAsc(
+		return r.store.ListResourcesByVersionBeforeAsc(
 			ctx,
 			db.ListResourcesByVersionBeforeAscParams{
 				Kind:        r.kind,
@@ -505,7 +505,7 @@ func (r *resourceRepository[E]) listByVersion(
 
 	case params.Position == repository.PositionBefore &&
 		params.OrderDirection == repository.OrderDirectionDesc:
-		return r.queries.ListResourcesByVersionBeforeDesc(
+		return r.store.ListResourcesByVersionBeforeDesc(
 			ctx,
 			db.ListResourcesByVersionBeforeDescParams{
 				Kind:        r.kind,
@@ -529,7 +529,7 @@ func (r *resourceRepository[E]) listByCreatedAt(
 	switch {
 	case params.Position == repository.PositionAfter &&
 		params.OrderDirection == repository.OrderDirectionAsc:
-		return r.queries.ListResourcesByCreatedAtAfterAsc(
+		return r.store.ListResourcesByCreatedAtAfterAsc(
 			ctx,
 			db.ListResourcesByCreatedAtAfterAscParams{
 				Kind:            r.kind,
@@ -541,7 +541,7 @@ func (r *resourceRepository[E]) listByCreatedAt(
 
 	case params.Position == repository.PositionAfter &&
 		params.OrderDirection == repository.OrderDirectionDesc:
-		return r.queries.ListResourcesByCreatedAtAfterDesc(
+		return r.store.ListResourcesByCreatedAtAfterDesc(
 			ctx,
 			db.ListResourcesByCreatedAtAfterDescParams{
 				Kind:            r.kind,
@@ -553,7 +553,7 @@ func (r *resourceRepository[E]) listByCreatedAt(
 
 	case params.Position == repository.PositionBefore &&
 		params.OrderDirection == repository.OrderDirectionAsc:
-		return r.queries.ListResourcesByCreatedAtBeforeAsc(
+		return r.store.ListResourcesByCreatedAtBeforeAsc(
 			ctx,
 			db.ListResourcesByCreatedAtBeforeAscParams{
 				Kind:            r.kind,
@@ -565,7 +565,7 @@ func (r *resourceRepository[E]) listByCreatedAt(
 
 	case params.Position == repository.PositionBefore &&
 		params.OrderDirection == repository.OrderDirectionDesc:
-		return r.queries.ListResourcesByCreatedAtBeforeDesc(
+		return r.store.ListResourcesByCreatedAtBeforeDesc(
 			ctx,
 			db.ListResourcesByCreatedAtBeforeDescParams{
 				Kind:            r.kind,
@@ -589,7 +589,7 @@ func (r *resourceRepository[E]) listByUpdatedAt(
 	switch {
 	case params.Position == repository.PositionAfter &&
 		params.OrderDirection == repository.OrderDirectionAsc:
-		return r.queries.ListResourcesByUpdatedAtAfterAsc(
+		return r.store.ListResourcesByUpdatedAtAfterAsc(
 			ctx,
 			db.ListResourcesByUpdatedAtAfterAscParams{
 				Kind:            r.kind,
@@ -601,7 +601,7 @@ func (r *resourceRepository[E]) listByUpdatedAt(
 
 	case params.Position == repository.PositionAfter &&
 		params.OrderDirection == repository.OrderDirectionDesc:
-		return r.queries.ListResourcesByUpdatedAtAfterDesc(
+		return r.store.ListResourcesByUpdatedAtAfterDesc(
 			ctx,
 			db.ListResourcesByUpdatedAtAfterDescParams{
 				Kind:            r.kind,
@@ -613,7 +613,7 @@ func (r *resourceRepository[E]) listByUpdatedAt(
 
 	case params.Position == repository.PositionBefore &&
 		params.OrderDirection == repository.OrderDirectionAsc:
-		return r.queries.ListResourcesByUpdatedAtBeforeAsc(
+		return r.store.ListResourcesByUpdatedAtBeforeAsc(
 			ctx,
 			db.ListResourcesByUpdatedAtBeforeAscParams{
 				Kind:            r.kind,
@@ -625,7 +625,7 @@ func (r *resourceRepository[E]) listByUpdatedAt(
 
 	case params.Position == repository.PositionBefore &&
 		params.OrderDirection == repository.OrderDirectionDesc:
-		return r.queries.ListResourcesByUpdatedAtBeforeDesc(
+		return r.store.ListResourcesByUpdatedAtBeforeDesc(
 			ctx,
 			db.ListResourcesByUpdatedAtBeforeDescParams{
 				Kind:            r.kind,

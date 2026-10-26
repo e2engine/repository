@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -396,7 +397,7 @@ func TestEnvironmentGetIDsByID(t *testing.T) {
 			context: func() context.Context {
 				return t.Context()
 			},
-			expectedIDs: allIDs,
+			expectedIDs: allIDs[:2],
 		},
 		{
 			name: "query error",
@@ -464,11 +465,18 @@ func TestEnvironmentGetIDsByName(t *testing.T) {
 	resources := getResourcesForList(t, "environment")
 	createEnvironmentResources(t, repository, resources)
 
-	allIDs := make([]string, len(resources))
-	for i := range resources {
-		allIDs[i] = resources[i].ID
+	slices.SortFunc(resources, func(a, b corerepository.Resource) int {
+		if c := strings.Compare(a.Name, b.Name); c != 0 {
+			return c
+		}
+
+		return strings.Compare(a.ID, b.ID)
+	})
+
+	expectedIDs := []string{
+		resources[0].ID,
+		resources[1].ID,
 	}
-	slices.Sort(allIDs)
 
 	testCases := []struct {
 		name          string
@@ -483,7 +491,7 @@ func TestEnvironmentGetIDsByName(t *testing.T) {
 			context: func() context.Context {
 				return t.Context()
 			},
-			expectedIDs: allIDs,
+			expectedIDs: expectedIDs,
 		},
 		{
 			name:  "query error",

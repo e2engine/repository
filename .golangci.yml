@@ -78,6 +78,10 @@ linters:
       - legacy
       - std-error-handling
     rules:
+      - path: ^(sqlite/(testexecution|testsuiteexecution)\.go)$
+        linters:
+          - dupl
+
       - linters:
           - dogsled
           - dupl
