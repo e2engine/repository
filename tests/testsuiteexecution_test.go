@@ -25,8 +25,8 @@ func TestTestSuiteExecutionCRUD(t *testing.T) {
 		t.Fatalf("Expected empty test suite executions list, got %d test suite executions", len(executions))
 	}
 
-	execution1 := createTestSuiteExecution(t, repository, 1)
-	execution2 := createTestSuiteExecution(t, repository, 2)
+	execution1 := createUnfinishedTestSuiteExecution(t, repository, 1)
+	execution2 := createUnfinishedTestSuiteExecution(t, repository, 2)
 
 	childExecution1 := getDefaultTestExecution(t, 1)
 	childExecution1.TestSuiteExecutionID = execution1.ID
@@ -312,8 +312,8 @@ func TestTestSuiteExecutionSetRunning(t *testing.T) {
 	repositories := getRepositories(t)
 	repository := repositories.TestSuiteExecution
 	executions := []corerepository.TestSuiteExecution{
-		createTestSuiteExecution(t, repository, 1),
-		createTestSuiteExecution(t, repository, 2),
+		createUnfinishedTestSuiteExecution(t, repository, 1),
+		createUnfinishedTestSuiteExecution(t, repository, 2),
 	}
 
 	for i, offset := range []time.Duration{time.Hour, 2 * time.Hour} {
@@ -376,17 +376,17 @@ func TestTestSuiteExecutionSetCompleted(t *testing.T) {
 	repositories := getRepositories(t)
 	repository := repositories.TestSuiteExecution
 	executions := []corerepository.TestSuiteExecution{
-		createTestSuiteExecution(t, repository, 1),
-		createTestSuiteExecution(t, repository, 2),
-		createTestSuiteExecution(t, repository, 3),
-		createTestSuiteExecution(t, repository, 4),
+		createUnfinishedTestSuiteExecution(t, repository, 1),
+		createUnfinishedTestSuiteExecution(t, repository, 2),
+		createUnfinishedTestSuiteExecution(t, repository, 3),
+		createUnfinishedTestSuiteExecution(t, repository, 4),
 	}
 
 	testCases := []struct {
 		name          string
 		index         int
 		offset        time.Duration
-		status        string
+		status        corerepository.ExecutionStatus
 		summary       []byte
 		expectedError error
 	}{
@@ -394,30 +394,30 @@ func TestTestSuiteExecutionSetCompleted(t *testing.T) {
 			name:    "passed test suite execution",
 			index:   0,
 			offset:  time.Hour,
-			status:  "passed",
+			status:  corerepository.ExecutionStatusPassed,
 			summary: []byte(`{"result":"passed"}`),
 		},
 		{
 			name:    "failed test suite execution",
 			index:   1,
 			offset:  2 * time.Hour,
-			status:  "failed",
+			status:  corerepository.ExecutionStatusFailed,
 			summary: []byte(`{"result":"failed"}`),
 		},
 		{
 			name:    "errored test suite execution",
 			index:   2,
 			offset:  3 * time.Hour,
-			status:  "error",
+			status:  corerepository.ExecutionStatusError,
 			summary: []byte(`{"result":"error"}`),
 		},
 		{
 			name:          "test suite execution invalid status",
 			index:         3,
 			offset:        4 * time.Hour,
-			status:        "invalid",
+			status:        corerepository.ExecutionStatus("invalid"),
 			summary:       []byte(`{"result":"invalid"}`),
-			expectedError: corerepository.ErrInvalidPayload,
+			expectedError: corerepository.ErrInvalidExecutionStatus,
 		},
 	}
 
@@ -564,6 +564,20 @@ func TestTestSuiteExecutionGetIDsByID(t *testing.T) {
 func createTestSuiteExecution(t *testing.T, repository corerepository.TestSuiteExecutionRepository, index int) corerepository.TestSuiteExecution {
 	t.Helper()
 	execution := getDefaultTestSuiteExecution(t, index)
+	created, err := repository.Create(t.Context(), &execution)
+	if err != nil {
+		t.Fatalf("Unexpected test suite execution%d create error: %v", index, err)
+	}
+	if created == nil {
+		t.Fatalf("Expected created%d test suite execution to be non-nil", index)
+	}
+	assertEqualTestSuiteExecutions(t, execution, *created)
+	return execution
+}
+
+func createUnfinishedTestSuiteExecution(t *testing.T, repository corerepository.TestSuiteExecutionRepository, index int) corerepository.TestSuiteExecution {
+	t.Helper()
+	execution := getUnfinishedTestSuiteExecution(t, index)
 	created, err := repository.Create(t.Context(), &execution)
 	if err != nil {
 		t.Fatalf("Unexpected test suite execution%d create error: %v", index, err)

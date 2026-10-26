@@ -48,10 +48,16 @@ FROM resources r
 WHERE tt.tag = ?1
   AND r.kind = 'test'
 ORDER BY r.id ASC
+    LIMIT ?2
 `
 
-func (q *Queries) GetTestsByTag(ctx context.Context, tag string) ([]Resource, error) {
-	rows, err := q.db.QueryContext(ctx, getTestsByTag, tag)
+type GetTestsByTagParams struct {
+	Tag   string `json:"tag"`
+	Limit int64  `json:"limit"`
+}
+
+func (q *Queries) GetTestsByTag(ctx context.Context, arg GetTestsByTagParams) ([]Resource, error) {
+	rows, err := q.db.QueryContext(ctx, getTestsByTag, arg.Tag, arg.Limit)
 	if err != nil {
 		return nil, err
 	}

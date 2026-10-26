@@ -16,7 +16,7 @@ func TestTestExecutionCRUD(t *testing.T) {
 	testSuiteExecutionRepository := repositories.TestSuiteExecution
 
 	// create a testSuiteExecution to use for the testExecutions
-	testSuiteExecution := getDefaultTestSuiteExecution(t, 1)
+	testSuiteExecution := getUnfinishedTestSuiteExecution(t, 1)
 	createdSuite, err := testSuiteExecutionRepository.Create(t.Context(), &testSuiteExecution)
 	if err != nil {
 		t.Fatalf("Unexpected testSuiteExecution create error: %v", err)
@@ -44,7 +44,7 @@ func TestTestExecutionCRUD(t *testing.T) {
 	}
 
 	// create two testexecutions
-	testExecution1 := getDefaultTestExecution(t, 1)
+	testExecution1 := getUnfinishedTestExecution(t, 1)
 	created1, err := repository.Create(t.Context(), &testExecution1)
 	if err != nil {
 		t.Fatalf("Unexpected testExecution1 create error: %v", err)
@@ -54,7 +54,7 @@ func TestTestExecutionCRUD(t *testing.T) {
 	}
 	assertEqualTestExecutions(t, testExecution1, *created1)
 
-	testExecution2 := getDefaultTestExecution(t, 2)
+	testExecution2 := getUnfinishedTestExecution(t, 2)
 	created2, err := repository.Create(t.Context(), &testExecution2)
 	if err != nil {
 		t.Fatalf("Unexpected testExecution2 create error: %v", err)
@@ -130,16 +130,34 @@ func TestTestExecutionCRUD(t *testing.T) {
 		t.Fatalf("Expected testExecution IDs %v, got %v", []string{testExecution1.ID, testExecution2.ID}, ids)
 	}
 
-	// get the testExecutions by testSuiteExecutionID prefix and check that they match
-	testExecutions3, err := repository.GetByTestSuiteExecutionID(t.Context(), idPrefixTestSuiteExecution+idBody+"1")
+	// Get aggregated execution states for the suite.
+	states, alreadyCompleted, err := repository.GetTestSuiteExecutionStates(
+		t.Context(),
+		testSuiteExecution.ID,
+	)
 	if err != nil {
-		t.Fatalf("Unexpected testExecution IDs by testSuiteExecutionID error: %v", err)
+		t.Fatalf("Unexpected GetTestSuiteExecutionStates error: %v", err)
 	}
-	if len(testExecutions3) != 2 {
-		t.Fatalf("Expected 2 testExecutions by testSuiteExecutionID, got %d", len(testExecutions3))
+
+	if alreadyCompleted {
+		t.Fatal("Expected suite execution to be unfinished")
 	}
-	assertEqualTestExecutions(t, testExecution1, testExecutions3[0])
-	assertEqualTestExecutions(t, testExecution2, testExecutions3[1])
+
+	if len(states) != 1 {
+		t.Fatalf("Expected 1 status group, got %d", len(states))
+	}
+
+	if states[0].Status != testExecution1.Status {
+		t.Fatalf(
+			"Expected status %q, got %q",
+			testExecution1.Status,
+			states[0].Status,
+		)
+	}
+
+	if states[0].Count != 2 {
+		t.Fatalf("Expected count 2, got %d", states[0].Count)
+	}
 
 	// set the first testExecution to running and check that it was updated
 	testExecution1.StartedAt = testExecution1.StartedAt.Add(time.Hour)
@@ -666,6 +684,11 @@ func TestTestExecutionSetRunning(t *testing.T) {
 	}
 
 	testExecutions := getTestExecutionsForList(t, testSuiteExecution.ID)
+	testExecutions[0].Status = "scheduled"
+	testExecutions[0].FinishedAt = time.Time{}
+	testExecutions[1].Status = "scheduled"
+	testExecutions[1].FinishedAt = time.Time{}
+
 	createTestExecutions(t, repository, testExecutions[:2])
 
 	testCases := []struct {
@@ -762,6 +785,14 @@ func TestTestExecutionSetCompleted(t *testing.T) {
 	}
 
 	testExecutions := getTestExecutionsForList(t, testSuiteExecution.ID)
+	testExecutions[0].Status = "scheduled"
+	testExecutions[0].FinishedAt = time.Time{}
+	testExecutions[1].Status = "scheduled"
+	testExecutions[1].FinishedAt = time.Time{}
+	testExecutions[2].Status = "scheduled"
+	testExecutions[2].FinishedAt = time.Time{}
+	testExecutions[3].Status = "scheduled"
+	testExecutions[3].FinishedAt = time.Time{}
 	createTestExecutions(t, repository, testExecutions[:4])
 
 	testCases := []struct {
@@ -830,7 +861,7 @@ func TestTestExecutionSetCompleted(t *testing.T) {
 				Summary:    []byte(`{"result":"error"}`),
 			},
 			expected:      testExecutions[3],
-			expectedError: corerepository.ErrInvalidPayload,
+			expectedError: corerepository.ErrInvalidExecutionStatus,
 		},
 		{
 			name: "nonexistent test execution",
@@ -918,7 +949,7 @@ func TestTestExecutionGetIDsByID(t *testing.T) {
 			context: func() context.Context {
 				return t.Context()
 			},
-			expectedIDs: allIDs,
+			expectedIDs: allIDs[:2],
 		},
 		{
 			name: "query error",
@@ -985,7 +1016,7 @@ func TestTestExecutionCascadeDeleteWithTestSuiteExecution(t *testing.T) {
 	testExecutionRepository := repositories.TestExecution
 	testSuiteExecutionRepository := repositories.TestSuiteExecution
 
-	testSuiteExecution := getDefaultTestSuiteExecution(t, 1)
+	testSuiteExecution := getUnfinishedTestSuiteExecution(t, 1)
 	createdSuite, err := testSuiteExecutionRepository.Create(
 		t.Context(),
 		&testSuiteExecution,
@@ -1000,20 +1031,31 @@ func TestTestExecutionCascadeDeleteWithTestSuiteExecution(t *testing.T) {
 	testExecutions := getTestExecutionsForList(t, testSuiteExecution.ID)
 	createTestExecutions(t, testExecutionRepository, testExecutions[:3])
 
-	beforeDelete, err := testExecutionRepository.GetByTestSuiteExecutionID(
+	beforeDelete, alreadyCompleted, err := testExecutionRepository.GetTestSuiteExecutionStates(
 		t.Context(),
 		testSuiteExecution.ID,
 	)
 	if err != nil {
 		t.Fatalf(
-			"Unexpected GetByTestSuiteExecutionID error before parent deletion: %v",
+			"Unexpected GetTestSuiteExecutionStates error before parent deletion: %v",
 			err,
 		)
 	}
-	if len(beforeDelete) != 3 {
+
+	if alreadyCompleted {
+		t.Fatal("Expected suite execution to be unfinished")
+	}
+
+	var count int
+
+	for _, state := range beforeDelete {
+		count += state.Count
+	}
+
+	if count != 3 {
 		t.Fatalf(
 			"Expected 3 test executions before parent deletion, got %d",
-			len(beforeDelete),
+			count,
 		)
 	}
 
@@ -1028,21 +1070,27 @@ func TestTestExecutionCascadeDeleteWithTestSuiteExecution(t *testing.T) {
 		t.Fatalf("Expected deleted testSuiteExecution to be non-nil")
 	}
 
-	afterDelete, err := testExecutionRepository.GetByTestSuiteExecutionID(
+	afterDelete, alreadyCompleted, err := testExecutionRepository.GetTestSuiteExecutionStates(
 		t.Context(),
 		testSuiteExecution.ID,
 	)
-	if err != nil {
+
+	if !errors.Is(err, corerepository.ErrNotFound) {
 		t.Fatalf(
-			"Unexpected GetByTestSuiteExecutionID error after parent deletion: %v",
+			"Expected ErrNotFound after parent deletion, got %v",
 			err,
 		)
 	}
-	if len(afterDelete) != 0 {
+
+	if afterDelete != nil {
 		t.Fatalf(
-			"Expected test executions to be deleted with parent, got %d",
-			len(afterDelete),
+			"Expected nil states after parent deletion, got %v",
+			afterDelete,
 		)
+	}
+
+	if alreadyCompleted {
+		t.Fatal("Expected alreadyCompleted to be false")
 	}
 
 	for _, expected := range testExecutions[:3] {
@@ -1068,4 +1116,275 @@ func TestTestExecutionCascadeDeleteWithTestSuiteExecution(t *testing.T) {
 			)
 		}
 	}
+}
+
+func TestTestExecutionGetTestSuiteExecutionStates(t *testing.T) {
+	repositories := getRepositories(t)
+	repo := repositories.TestExecution
+	suiteRepo := repositories.TestSuiteExecution
+
+	// Create two suites to verify that aggregation is scoped correctly.
+	suite1 := getUnfinishedTestSuiteExecution(t, 1)
+	if _, err := suiteRepo.Create(t.Context(), &suite1); err != nil {
+		t.Fatalf("Create suite1: %v", err)
+	}
+
+	suite2 := getUnfinishedTestSuiteExecution(t, 2)
+	if _, err := suiteRepo.Create(t.Context(), &suite2); err != nil {
+		t.Fatalf("Create suite2: %v", err)
+	}
+
+	baseTime := time.Date(
+		2026, time.October, 25,
+		10, 0, 0, 0,
+		time.UTC,
+	)
+
+	t.Run("suite without test executions", func(t *testing.T) {
+		states, alreadyCompleted, err := repo.GetTestSuiteExecutionStates(
+			t.Context(),
+			suite1.ID,
+		)
+		if err != nil {
+			t.Fatalf("GetTestSuiteExecutionStates: %v", err)
+		}
+
+		if alreadyCompleted {
+			t.Fatal("Expected suite execution to be unfinished")
+		}
+
+		if len(states) != 0 {
+			t.Fatalf("Expected empty states, got %v", states)
+		}
+	})
+
+	// Create two completed tests with different completion timestamps,
+	// another completed test with a different status, and a scheduled test.
+	executions := []struct {
+		suiteID    string
+		status     corerepository.ExecutionStatus
+		finishedAt time.Time
+	}{
+		{
+			suiteID:    suite1.ID,
+			status:     corerepository.ExecutionStatusPassed,
+			finishedAt: baseTime.Add(time.Minute),
+		},
+		{
+			suiteID:    suite1.ID,
+			status:     corerepository.ExecutionStatusPassed,
+			finishedAt: baseTime.Add(3 * time.Minute),
+		},
+		{
+			suiteID:    suite1.ID,
+			status:     corerepository.ExecutionStatusFailed,
+			finishedAt: baseTime.Add(2 * time.Minute),
+		},
+		{
+			suiteID:    suite1.ID,
+			status:     corerepository.ExecutionStatusScheduled,
+			finishedAt: time.Time{},
+		},
+		{
+			suiteID:    suite2.ID,
+			status:     corerepository.ExecutionStatusPassed,
+			finishedAt: baseTime.Add(10 * time.Minute),
+		},
+	}
+
+	for i, execution := range executions {
+		testExecution := getDefaultTestExecution(t, i+1)
+		testExecution.TestSuiteExecutionID = execution.suiteID
+		testExecution.Status = execution.status
+		testExecution.FinishedAt = execution.finishedAt
+
+		if _, err := repo.Create(t.Context(), &testExecution); err != nil {
+			t.Fatalf("Create test execution %d: %v", i+1, err)
+		}
+	}
+
+	t.Run("aggregates statuses and timestamps", func(t *testing.T) {
+		states, alreadyCompleted, err := repo.GetTestSuiteExecutionStates(
+			t.Context(),
+			suite1.ID,
+		)
+		if err != nil {
+			t.Fatalf("GetTestSuiteExecutionStates: %v", err)
+		}
+
+		if alreadyCompleted {
+			t.Fatal("Expected suite execution to be unfinished")
+		}
+
+		if len(states) != 3 {
+			t.Fatalf("Expected 3 status groups, got %d", len(states))
+		}
+
+		// GROUP BY does not guarantee ordering.
+		byStatus := make(map[corerepository.ExecutionStatus]corerepository.TestSuiteExecutionState)
+
+		for _, state := range states {
+			byStatus[state.Status] = state
+		}
+
+		testCases := []struct {
+			status     corerepository.ExecutionStatus
+			count      int
+			finishedAt time.Time
+		}{
+			{
+				status:     corerepository.ExecutionStatusPassed,
+				count:      2,
+				finishedAt: baseTime.Add(3 * time.Minute),
+			},
+			{
+				status:     corerepository.ExecutionStatusFailed,
+				count:      1,
+				finishedAt: baseTime.Add(2 * time.Minute),
+			},
+			{
+				status:     corerepository.ExecutionStatusScheduled,
+				count:      1,
+				finishedAt: time.Time{},
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(string(tc.status), func(t *testing.T) {
+				state, ok := byStatus[tc.status]
+				if !ok {
+					t.Fatalf("Missing status group %q", tc.status)
+				}
+
+				if state.Count != tc.count {
+					t.Errorf(
+						"Expected count %d, got %d",
+						tc.count,
+						state.Count,
+					)
+				}
+
+				if !state.LastTestFinishedAt.Equal(tc.finishedAt) {
+					t.Errorf(
+						"Expected LastTestFinishedAt %v, got %v",
+						tc.finishedAt,
+						state.LastTestFinishedAt,
+					)
+				}
+			})
+		}
+	})
+
+	t.Run("scopes results to suite", func(t *testing.T) {
+		states, alreadyCompleted, err := repo.GetTestSuiteExecutionStates(
+			t.Context(),
+			suite2.ID,
+		)
+		if err != nil {
+			t.Fatalf("GetTestSuiteExecutionStates: %v", err)
+		}
+
+		if alreadyCompleted {
+			t.Fatal("Expected suite execution to be unfinished")
+		}
+
+		if len(states) != 1 {
+			t.Fatalf("Expected 1 status group, got %d", len(states))
+		}
+
+		if states[0].Status != "passed" {
+			t.Errorf("Expected status passed, got %q", states[0].Status)
+		}
+
+		if states[0].Count != 1 {
+			t.Errorf("Expected count 1, got %d", states[0].Count)
+		}
+
+		expected := baseTime.Add(10 * time.Minute)
+
+		if !states[0].LastTestFinishedAt.Equal(expected) {
+			t.Errorf(
+				"Expected LastTestFinishedAt %v, got %v",
+				expected,
+				states[0].LastTestFinishedAt,
+			)
+		}
+	})
+
+	t.Run("already completed suite", func(t *testing.T) {
+		err := suiteRepo.SetCompleted(
+			t.Context(),
+			&corerepository.SetCompletedParams{
+				ID:         suite2.ID,
+				Status:     "passed",
+				FinishedAt: baseTime.Add(20 * time.Minute),
+			},
+		)
+		if err != nil {
+			t.Fatalf("SetCompleted: %v", err)
+		}
+
+		states, alreadyCompleted, err := repo.GetTestSuiteExecutionStates(
+			t.Context(),
+			suite2.ID,
+		)
+		if err != nil {
+			t.Fatalf("GetTestSuiteExecutionStates: %v", err)
+		}
+
+		if !alreadyCompleted {
+			t.Fatal("Expected alreadyCompleted to be true")
+		}
+
+		if states != nil {
+			t.Fatalf(
+				"Expected nil states for completed suite, got %v",
+				states,
+			)
+		}
+	})
+
+	t.Run("nonexistent suite", func(t *testing.T) {
+		states, alreadyCompleted, err := repo.GetTestSuiteExecutionStates(
+			t.Context(),
+			"does-not-exist",
+		)
+
+		if !errors.Is(err, corerepository.ErrNotFound) {
+			t.Fatalf(
+				"Expected ErrNotFound, got %v",
+				err,
+			)
+		}
+
+		if states != nil {
+			t.Fatalf("Expected nil states, got %v", states)
+		}
+
+		if alreadyCompleted {
+			t.Fatal("Expected alreadyCompleted to be false")
+		}
+	})
+
+	t.Run("canceled context", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+
+		states, alreadyCompleted, err := repo.GetTestSuiteExecutionStates(
+			ctx,
+			suite1.ID,
+		)
+
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("Expected context.Canceled, got %v", err)
+		}
+
+		if states != nil {
+			t.Fatalf("Expected nil states, got %v", states)
+		}
+
+		if alreadyCompleted {
+			t.Fatal("Expected alreadyCompleted to be false")
+		}
+	})
 }

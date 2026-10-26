@@ -349,7 +349,7 @@ func TestTestExecutionListCursorEqualSortValue(t *testing.T) {
 				testExecutions[4].Status = "running"
 			},
 			setAnchorValue: func(params *corerepository.ListParams, testExecution corerepository.TestExecution) {
-				params.ValueString = testExecution.Status
+				params.ValueString = string(testExecution.Status)
 			},
 			expectedIndexes: map[corerepository.OrderDirection][]int{
 				corerepository.OrderDirectionAsc:  {3, 4},
@@ -757,7 +757,7 @@ func testExecutionListOrderByCases() []testExecutionOrderByCase {
 			orderBy:          corerepository.OrderByStatus,
 			ascendingIndexes: []int{2, 1, 3, 0, 4},
 			setAnchorValue: func(params *corerepository.ListParams, testExecution corerepository.TestExecution) {
-				params.ValueString = testExecution.Status
+				params.ValueString = string(testExecution.Status)
 			},
 		},
 	}

@@ -178,6 +178,7 @@ SELECT id
 FROM test_suite_executions
 WHERE id LIKE ?1 || '%'
 ORDER BY id ASC
+    LIMIT 2
 `
 
 // ============================================================================
@@ -2044,7 +2045,9 @@ SET
     status = ?2,
     summary = ?3
 WHERE id = ?4
-RETURNING id
+  AND status IN ('scheduled', 'running')
+  AND ?2 IN ('passed', 'failed', 'error')
+    RETURNING id
 `
 
 type SetTestSuiteExecutionCompletedParams struct {
@@ -2073,7 +2076,8 @@ SET
     started_at = ?1,
     status = 'running'
 WHERE id = ?2
-RETURNING id
+  AND status = 'scheduled'
+    RETURNING id
 `
 
 type SetTestSuiteExecutionRunningParams struct {

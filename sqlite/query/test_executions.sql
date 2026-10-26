@@ -80,7 +80,8 @@ WHERE id = sqlc.arg(id)
 SELECT id
 FROM test_executions
 WHERE id LIKE sqlc.arg(prefix) || '%'
-ORDER BY id ASC;
+ORDER BY id ASC
+    LIMIT 2;
 
 
 -- ============================================================================
@@ -621,6 +622,15 @@ SELECT status
 FROM test_executions
 WHERE id = sqlc.arg(id);
 
+-- name: GetTestSuiteExecutionStats :many
+SELECT
+    status,
+    COUNT(*) AS count,
+    MAX(finished_at) AS last_test_finished_at
+FROM test_executions
+WHERE test_suite_execution_id =
+    CAST(sqlc.arg(test_suite_execution_id) AS TEXT)
+GROUP BY status;
 
 -- ============================================================================
 -- State transitions
@@ -632,14 +642,17 @@ SET
     started_at = sqlc.arg(started_at),
     status = 'running'
 WHERE id = sqlc.arg(id)
-RETURNING id;
+  AND status = 'scheduled'
+    RETURNING id;
 
 
 -- name: SetTestExecutionCompleted :one
 UPDATE test_executions
 SET
-    finished_at = sqlc.arg(finished_at),
-    status = sqlc.arg(status),
-    summary = sqlc.arg(summary)
-WHERE id = sqlc.arg(id)
-RETURNING id;
+    finished_at = ?1,
+    status = ?2,
+    summary = ?3
+WHERE id = ?4
+  AND status IN ('scheduled', 'running')
+  AND ?2 IN ('passed', 'failed', 'error')
+    RETURNING id;

@@ -54,11 +54,12 @@ type Querier interface {
 	// ============================================================================
 	GetTestSuiteExecutionIDsByID(ctx context.Context, prefix sql.NullString) ([]string, error)
 	GetTestSuiteExecutionIDsByTestSuiteID(ctx context.Context, prefix sql.NullString) ([]string, error)
+	GetTestSuiteExecutionStats(ctx context.Context, testSuiteExecutionID string) ([]GetTestSuiteExecutionStatsRow, error)
 	// ============================================================================
 	// Status
 	// ============================================================================
 	GetTestSuiteExecutionStatus(ctx context.Context, id string) (string, error)
-	GetTestsByTag(ctx context.Context, tag string) ([]Resource, error)
+	GetTestsByTag(ctx context.Context, arg GetTestsByTagParams) ([]Resource, error)
 	// ============================================================================
 	// Cursor page: CreatedAt
 	// ============================================================================

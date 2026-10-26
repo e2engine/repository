@@ -75,7 +75,8 @@ SELECT id
 FROM resources
 WHERE kind = sqlc.arg(kind)
   AND id LIKE sqlc.arg(prefix) || '%'
-ORDER BY id ASC;
+ORDER BY id ASC
+    LIMIT 2;
 
 
 -- name: GetResourceIDsByName :many
@@ -83,7 +84,8 @@ SELECT id
 FROM resources
 WHERE kind = sqlc.arg(kind)
   AND name LIKE sqlc.arg(prefix) || '%'
-ORDER BY name ASC, id ASC;
+ORDER BY name ASC, id ASC
+    LIMIT 2;
 
 
 -- ============================================================================

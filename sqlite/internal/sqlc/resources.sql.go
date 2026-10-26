@@ -164,6 +164,7 @@ FROM resources
 WHERE kind = ?1
   AND id LIKE ?2 || '%'
 ORDER BY id ASC
+    LIMIT 2
 `
 
 type GetResourceIDsByIDParams struct {
@@ -203,6 +204,7 @@ FROM resources
 WHERE kind = ?1
   AND name LIKE ?2 || '%'
 ORDER BY name ASC, id ASC
+    LIMIT 2
 `
 
 type GetResourceIDsByNameParams struct {

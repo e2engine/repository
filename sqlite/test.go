@@ -88,8 +88,13 @@ func (r *testRepository) Create(
 func (r *testRepository) GetByTag(
 	ctx context.Context,
 	tag string,
+	limit int,
 ) ([]repository.Test, error) {
-	tests, err := r.store.GetTestsByTag(ctx, tag)
+	arg := db.GetTestsByTagParams{
+		Tag:   tag,
+		Limit: int64(limit),
+	}
+	tests, err := r.store.GetTestsByTag(ctx, arg)
 	if err != nil {
 		return nil, err
 	}
