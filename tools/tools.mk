@@ -12,9 +12,11 @@ ARCH := $(shell uname -m)
 
 GOLANGCI_LINT_VERSION ?= $(shell grep 'github.com/golangci/golangci-lint/v2 ' $(TOOLS_MOD_FILE) | awk '{print $$2}')
 SQLC_VERSION          ?= $(shell grep 'github.com/sqlc-dev/sqlc ' $(TOOLS_MOD_FILE) | awk '{print $$2}')
+GOVULNCHECK_VERSION   ?= $(shell go -C $(TOOLS_DIR) list -m -f '{{.Version}}' golang.org/x/vuln)
 
 GOLANGCI_LINT := $(BIN_DIR)/golangci-lint-$(OS)-$(ARCH)-$(GOLANGCI_LINT_VERSION)
 SQLC          := $(BIN_DIR)/sqlc-$(OS)-$(ARCH)-$(SQLC_VERSION)
+GOVULNCHECK   := $(BIN_DIR)/govulncheck-$(OS)-$(ARCH)-$(GOVULNCHECK_VERSION)
 
 $(GOLANGCI_LINT):
 	$(call go-install-tool,$@,github.com/golangci/golangci-lint/v2/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
@@ -22,8 +24,12 @@ $(GOLANGCI_LINT):
 $(SQLC):
 	$(call go-install-tool,$@,github.com/sqlc-dev/sqlc/cmd/sqlc,$(SQLC_VERSION))
 
+$(GOVULNCHECK):
+	$(call go-install-tool,$@,golang.org/x/vuln/cmd/govulncheck,$(GOVULNCHECK_VERSION))
+
 GOLANGCI_LINT_LINK := $(BIN_DIR)/golangci-lint
 SQLC_LINK          := $(BIN_DIR)/sqlc
+GOVULNCHECK_LINK   := $(BIN_DIR)/govulncheck
 
 .PHONY: $(GOLANGCI_LINT_LINK)
 $(GOLANGCI_LINT_LINK): $(GOLANGCI_LINT)
@@ -33,7 +39,11 @@ $(GOLANGCI_LINT_LINK): $(GOLANGCI_LINT)
 $(SQLC_LINK): $(SQLC)
 	$(call create-symlink,$(SQLC),$(SQLC_LINK))
 
-TOOLS := install-golangci-lint install-sqlc
+.PHONY: $(GOVULNCHECK_LINK)
+$(GOVULNCHECK_LINK): $(GOVULNCHECK)
+	$(call create-symlink,$(GOVULNCHECK),$(GOVULNCHECK_LINK))
+
+TOOLS := install-golangci-lint install-sqlc install-govulncheck
 
 .PHONY: install-tools
 install-tools: $(TOOLS)
@@ -43,6 +53,9 @@ install-golangci-lint: $(GOLANGCI_LINT) $(GOLANGCI_LINT_LINK)
 
 .PHONY: install-sqlc
 install-sqlc: $(SQLC) $(SQLC_LINK)
+
+.PHONY: install-govulncheck
+install-govulncheck: $(GOVULNCHECK) $(GOVULNCHECK_LINK)
 
 .PHONY: clean-tools
 clean-tools:
