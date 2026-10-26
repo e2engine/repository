@@ -23,6 +23,11 @@ normalizers: sqlc
 lint: install-golangci-lint
 	$(GOLANGCI_LINT) run
 
+.PHONY: vulncheck
+vulncheck: install-govulncheck
+	@echo "Checking for known vulnerabilities..."
+	$(GOVULNCHECK) ./...
+
 .PHONY: test
 test:
 	@echo "Running tests..."
@@ -46,5 +51,5 @@ test-race:
 	@go test ./... -race -count=1 -timeout=600s
 
 .PHONY: verify
-verify: normalizers lint test-race
+verify: normalizers lint vulncheck test-race
 	@echo "All verifications passed successfully."
