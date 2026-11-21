@@ -42,17 +42,11 @@ Run race detection:
 make test-race
 ```
 
-## E2Engine
+## Links
 
-This repository is part of E2Engine.
-
-- [core](https://github.com/e2engine/core) — core domain model, execution logic, and public APIs
-- [repository](https://github.com/e2engine/repository) — persistence implementations
-- [runner-local](https://github.com/e2engine/runner-local) — local test execution
-- [cli](https://github.com/e2engine/cli) — command-line interface
-- [tests](https://github.com/e2engine/tests) — end-to-end tests for E2Engine
-- [demo](https://github.com/e2engine/demo) — executable demonstration system and E2Engine usage examples
-- [instrumentation-go](https://github.com/e2engine/instrumentation-go) — Go instrumentation library for E2Engine
+- [E2Engine website](https://e2engine.dev)
+- [E2Engine documentation](https://e2engine.dev/docs)
+- [E2Engine on GitHub](https://github.com/e2engine)
 
 ## License
 

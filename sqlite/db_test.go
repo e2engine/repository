@@ -12,50 +12,27 @@ import (
 	"github.com/e2engine/repository/sqlite/config"
 )
 
-func TestGetPath(t *testing.T) {
-	testCases := []struct {
-		name     string
-		dataPath string
-		dbName   string
-		expected string
-	}{
-		{
-			name:     "default",
-			dataPath: "/tmp/e2engine",
-			dbName:   "e2engine.sqlite",
-			expected: filepath.Join("/tmp/e2engine", "e2engine.sqlite"),
-		},
-		{
-			name:     "relative path",
-			dataPath: "data",
-			dbName:   "e2engine.sqlite",
-			expected: filepath.Join("data", "e2engine.sqlite"),
-		},
-		{
-			name:     "whitespace",
-			dataPath: " data ",
-			dbName:   " e2engine.sqlite ",
-			expected: strings.TrimSpace(
-				filepath.Join(" data ", " e2engine.sqlite "),
-			),
-		},
+func TestOpenDBRejectsSymlink(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target.sqlite")
+	if err := os.WriteFile(target, []byte("preserve"), 0o600); err != nil {
+		t.Fatal(err)
 	}
-
-	for _, testCase := range testCases {
-		t.Run(testCase.name, func(t *testing.T) {
-			actual := GetPath(
-				testCase.dataPath,
-				&config.Config{Name: testCase.dbName},
-			)
-
-			if actual != testCase.expected {
-				t.Fatalf(
-					"Expected path %q, got %q",
-					testCase.expected,
-					actual,
-				)
-			}
-		})
+	link := filepath.Join(dir, "link.sqlite")
+	if err := os.Symlink(target, link); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	db, err := openDB(link, &config.Config{Driver: "sqlite"})
+	if db != nil {
+		_ = db.Close()
+		t.Fatal("opened a symlink database")
+	}
+	if !errors.Is(err, repositoryerrors.ErrUnsafeDBPath) {
+		t.Fatalf("error = %v, want ErrUnsafeDBPath", err)
+	}
+	content, err := os.ReadFile(target)
+	if err != nil || string(content) != "preserve" {
+		t.Fatalf("target changed: %q, %v", content, err)
 	}
 }
 
@@ -73,6 +50,19 @@ func TestOpenDBEmptyPath(t *testing.T) {
 	}
 	if actual != nil {
 		t.Fatalf("Expected database to be nil")
+	}
+}
+
+func TestOpenDBRejectsDSNPath(t *testing.T) {
+	for _, path := range []string{"data.sqlite?mode=memory", "file:data.sqlite"} {
+		db, err := openDB(path, &config.Config{Driver: "sqlite"})
+		if db != nil {
+			_ = db.Close()
+			t.Fatalf("opened unsafe path %q", path)
+		}
+		if !errors.Is(err, repositoryerrors.ErrUnsafeDBPath) {
+			t.Fatalf("path %q: error = %v, want ErrUnsafeDBPath", path, err)
+		}
 	}
 }
 

@@ -19,13 +19,6 @@ import (
 	"github.com/e2engine/repository/sqlite/migrate"
 )
 
-func GetPath(dataPath string, cfg *config.Config) string {
-	// Default location stays under the config directory.
-	dbPath := filepath.Join(dataPath, cfg.Name)
-
-	return strings.TrimSpace(dbPath)
-}
-
 // Open opens a SQLite database connection, configures the connection pool, and runs migrations.
 func Open(ctx context.Context, path string, cfg *config.Config) (*sql.DB, error) {
 	dbConn, err := openDB(path, cfg)
@@ -35,10 +28,10 @@ func Open(ctx context.Context, path string, cfg *config.Config) (*sql.DB, error)
 
 	configureDB(dbConn, cfg)
 
-	if err := configureSQLite(ctx, dbConn); err != nil {
+	if errConfigure := configureSQLite(ctx, dbConn); errConfigure != nil {
 		return nil, nativeerrors.Join(
 			errors.ErrCannotConfigureDB,
-			err,
+			errConfigure,
 			dbConn.Close(),
 		)
 	}
@@ -58,8 +51,18 @@ func openDB(path string, cfg *config.Config) (*sql.DB, error) {
 	if path == "" {
 		return nil, errors.ErrEmptyDBPath
 	}
+	if strings.ContainsRune(path, '?') || strings.HasPrefix(path, "file:") {
+		return nil, errors.ErrUnsafeDBPath
+	}
 
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return nil, err
+	}
+	if info, err := os.Lstat(path); err == nil {
+		if !info.Mode().IsRegular() {
+			return nil, errors.ErrUnsafeDBPath
+		}
+	} else if !os.IsNotExist(err) {
 		return nil, err
 	}
 
