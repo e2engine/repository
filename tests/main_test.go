@@ -2,6 +2,7 @@ package tests
 
 import (
 	"encoding/json"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"testing"
@@ -25,7 +26,7 @@ var defaultConfig = &config.Config{
 func getRepositories(t *testing.T) coreapi.Repositories {
 	t.Helper()
 
-	dbPath := sqlite.GetPath(t.TempDir(), defaultConfig)
+	dbPath := filepath.Join(t.TempDir(), defaultConfig.Name)
 	dbConn, err := sqlite.Open(t.Context(), dbPath, defaultConfig)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)

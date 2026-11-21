@@ -4,4 +4,5 @@ import "github.com/ygrebnov/keys"
 
 var (
 	JournalMode = keys.New("journal.mode")
+	Filename    = keys.New("filename")
 )
