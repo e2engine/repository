@@ -1,5 +1,6 @@
 ROOT_PATH := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 COVERAGE_PATH := $(ROOT_PATH).coverage/
+GENERATED_PATHS := sqlite/internal/sqlc/ sqlite/testsuiteexecution_normalizers.gen.go
 
 # Use the locally installed Go toolchain.
 export GOTOOLCHAIN=local
@@ -18,6 +19,8 @@ sqlc: install-sqlc
 normalizers: sqlc
 	@echo "Generating normalizers..."
 	@cd sqlite && go generate
+	@git diff HEAD --exit-code -- $(GENERATED_PATHS)
+	@test -z "$$(git ls-files --others --exclude-standard -- $(GENERATED_PATHS))"
 
 .PHONY: lint
 lint: install-golangci-lint
