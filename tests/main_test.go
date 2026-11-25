@@ -31,6 +31,11 @@ func getRepositories(t *testing.T) coreapi.Repositories {
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
+	t.Cleanup(func() {
+		if err := dbConn.Close(); err != nil {
+			t.Errorf("failed to close database: %v", err)
+		}
+	})
 
 	return sqlite.NewRepositories(dbConn)
 }
