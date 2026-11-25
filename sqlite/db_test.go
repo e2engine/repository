@@ -77,12 +77,6 @@ func TestOpenDB(t *testing.T) {
 				return filepath.Join(dir, "test.sqlite")
 			},
 		},
-		{
-			name: "database in nested directory",
-			path: func(dir string) string {
-				return filepath.Join(dir, "nested", "data", "test.sqlite")
-			},
-		},
 	}
 
 	for _, testCase := range testCases {
@@ -145,6 +139,26 @@ func TestOpenDB(t *testing.T) {
 				)
 			}
 		})
+	}
+}
+
+func TestOpenRequiresExistingDirectory(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "missing")
+	path := filepath.Join(dir, "test.sqlite")
+	db, err := Open(t.Context(), path, &config.Config{
+		Driver:       "sqlite",
+		MaxOpenConns: 1,
+		MaxIdleConns: 1,
+	})
+	if db != nil {
+		_ = db.Close()
+		t.Fatal("opened database without a prepared directory")
+	}
+	if err == nil {
+		t.Fatal("expected an error for a missing database directory")
+	}
+	if _, statErr := os.Stat(dir); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("database directory was created: %v", statErr)
 	}
 }
 
