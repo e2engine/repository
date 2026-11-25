@@ -23,23 +23,21 @@ import (
 func Open(ctx context.Context, path string, cfg *config.Config) (*sql.DB, error) {
 	dbConn, err := openDB(path, cfg)
 	if err != nil {
-		return nil, nativeerrors.Join(errors.ErrCannotOpenDBConnection, err)
+		return nil, errorc.WithCause(errors.ErrCannotOpenDBConnection, err)
 	}
 
 	configureDB(dbConn, cfg)
 
 	if errConfigure := configureSQLite(ctx, dbConn); errConfigure != nil {
 		return nil, nativeerrors.Join(
-			errors.ErrCannotConfigureDB,
-			errConfigure,
+			errorc.WithCause(errors.ErrCannotConfigureDB, errConfigure),
 			dbConn.Close(),
 		)
 	}
 
 	if errRun := migrate.RunDBMigration(ctx, dbConn); errRun != nil {
 		return nil, nativeerrors.Join(
-			errors.ErrCannotMigrateDB,
-			errRun,
+			errorc.WithCause(errors.ErrCannotMigrateDB, errRun),
 			dbConn.Close(),
 		)
 	}
