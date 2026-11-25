@@ -8,6 +8,9 @@ import (
 	"strings"
 	"testing"
 
+	corekeys "github.com/e2engine/core/pkg/keys"
+	"github.com/ygrebnov/errorc"
+
 	repositoryerrors "github.com/e2engine/repository/errors"
 	"github.com/e2engine/repository/sqlite/config"
 )
@@ -159,6 +162,43 @@ func TestOpenRequiresExistingDirectory(t *testing.T) {
 	}
 	if _, statErr := os.Stat(dir); !errors.Is(statErr, os.ErrNotExist) {
 		t.Fatalf("database directory was created: %v", statErr)
+	}
+}
+
+func TestOpenPreservesDriverCause(t *testing.T) {
+	_, err := Open(
+		t.Context(),
+		filepath.Join(t.TempDir(), "test.sqlite"),
+		&config.Config{Driver: "unsupported"},
+	)
+	if !errors.Is(err, repositoryerrors.ErrCannotOpenDBConnection) ||
+		!errors.Is(err, repositoryerrors.ErrUnsupportedDBDriver) {
+		t.Fatalf("Open() error = %v, want both database and driver errors", err)
+	}
+
+	cause, ok := errorc.Lookup[error](err, corekeys.Cause)
+	if !ok || !errors.Is(cause, repositoryerrors.ErrUnsupportedDBDriver) {
+		t.Fatalf("Open() cause = %v, want unsupported driver error", cause)
+	}
+}
+
+func TestOpenPreservesConfigurationCause(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	_, err := Open(
+		ctx,
+		filepath.Join(t.TempDir(), "test.sqlite"),
+		&config.Config{Driver: "sqlite", MaxOpenConns: 1, MaxIdleConns: 1},
+	)
+	if !errors.Is(err, repositoryerrors.ErrCannotConfigureDB) ||
+		!errors.Is(err, context.Canceled) {
+		t.Fatalf("Open() error = %v, want both configuration and cancellation errors", err)
+	}
+
+	cause, ok := errorc.Lookup[error](err, corekeys.Cause)
+	if !ok || !errors.Is(cause, context.Canceled) {
+		t.Fatalf("Open() cause = %v, want context cancellation", cause)
 	}
 }
 
