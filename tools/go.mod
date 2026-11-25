@@ -2,10 +2,10 @@ module tools
 
 go 1.27
 
-require (
-	github.com/golangci/golangci-lint/v2 v2.15.0
-	github.com/sqlc-dev/sqlc v1.31.1
-	golang.org/x/vuln v1.10.0
+tool (
+	github.com/golangci/golangci-lint/v2/cmd/golangci-lint
+	github.com/sqlc-dev/sqlc/cmd/sqlc
+	golang.org/x/vuln/cmd/govulncheck
 )
 
 require (
@@ -99,6 +99,7 @@ require (
 	github.com/golangci/dupl v0.0.0-20260401084720-c99c5cf5c202 // indirect
 	github.com/golangci/go-printf-func-name v0.1.1 // indirect
 	github.com/golangci/gofmt v0.0.0-20260820135601-e84e05053792 // indirect
+	github.com/golangci/golangci-lint/v2 v2.15.0 // indirect
 	github.com/golangci/golines v0.16.0 // indirect
 	github.com/golangci/misspell v0.8.0 // indirect
 	github.com/golangci/plugin-module-register v0.1.2 // indirect
@@ -201,6 +202,7 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/spf13/viper v1.12.0 // indirect
 	github.com/sqlc-dev/doubleclick v1.0.0 // indirect
+	github.com/sqlc-dev/sqlc v1.31.1 // indirect
 	github.com/ssgreg/nlreturn/v2 v2.2.1 // indirect
 	github.com/stbenjam/no-sprintf-host-port v0.3.1 // indirect
 	github.com/stretchr/objx v0.5.3 // indirect
@@ -241,6 +243,7 @@ require (
 	golang.org/x/telemetry v0.0.0-20261116191925-e77a43154acb // indirect
 	golang.org/x/text v0.44.0 // indirect
 	golang.org/x/tools v0.53.0 // indirect
+	golang.org/x/vuln v1.10.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260817212433-ac3dfec99bb1 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260819154853-08b0e4226688 // indirect
 	google.golang.org/grpc v1.85.0-dev.0.20260825072537-93e31b48545e // indirect
