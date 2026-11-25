@@ -3,6 +3,7 @@ package errors
 import "github.com/ygrebnov/errorc"
 
 var (
+	ErrUnsupportedDBDriver    = errorc.New("unsupported database driver")
 	ErrCannotOpenDBConnection = errorc.New("cannot open db connection")
 	ErrCannotConfigureDB      = errorc.New("cannot configure database")
 	ErrCannotMigrateDB        = errorc.New("cannot migrate database")

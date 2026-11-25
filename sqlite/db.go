@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	nativeerrors "errors"
 	"os"
-	"path/filepath"
 	"strings"
 
 	coreapi "github.com/e2engine/core/api"
@@ -19,7 +18,8 @@ import (
 	"github.com/e2engine/repository/sqlite/migrate"
 )
 
-// Open opens a SQLite database connection, configures the connection pool, and runs migrations.
+// Open opens a SQLite database connection, configures the connection pool,
+// and runs migrations. The caller must prepare the database directory first.
 func Open(ctx context.Context, path string, cfg *config.Config) (*sql.DB, error) {
 	dbConn, err := openDB(path, cfg)
 	if err != nil {
@@ -36,10 +36,10 @@ func Open(ctx context.Context, path string, cfg *config.Config) (*sql.DB, error)
 		)
 	}
 
-	if err := migrate.RunDBMigration(ctx, dbConn); err != nil {
+	if errRun := migrate.RunDBMigration(ctx, dbConn); errRun != nil {
 		return nil, nativeerrors.Join(
 			errors.ErrCannotMigrateDB,
-			err,
+			errRun,
 			dbConn.Close(),
 		)
 	}
@@ -54,10 +54,15 @@ func openDB(path string, cfg *config.Config) (*sql.DB, error) {
 	if strings.ContainsRune(path, '?') || strings.HasPrefix(path, "file:") {
 		return nil, errors.ErrUnsafeDBPath
 	}
-
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-		return nil, err
+	if cfg.Driver != "sqlite" {
+		return nil, errorc.With(
+			errors.ErrUnsupportedDBDriver,
+			errorc.String(keys.DBDriver, cfg.Driver),
+		)
 	}
+
+	// Reject an existing non-regular path before opening the connection pool.
+	// This check does not prevent changes to the path after it returns.
 	if info, err := os.Lstat(path); err == nil {
 		if !info.Mode().IsRegular() {
 			return nil, errors.ErrUnsafeDBPath
