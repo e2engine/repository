@@ -8,7 +8,7 @@ require (
 	github.com/ygrebnov/errorc v0.7.0
 	github.com/ygrebnov/keys v0.2.0
 	github.com/ygrebnov/model v0.9.0
-	modernc.org/sqlite v1.62.0
+	modernc.org/sqlite v1.63.0
 )
 
 require (
